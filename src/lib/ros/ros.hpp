@@ -262,6 +262,7 @@ public:
 			     void (ObjType::*cb)(const MsgType *msg), ObjType *obj,
 			     unsigned interval = 0, int instance = 0)
 	{
+		(void)queue_size; // unused
 		const struct orb_metadata *meta = NULL;
 
 		if (_node  == NULL) {
@@ -282,6 +283,7 @@ public:
 	template <class T>
 	Publisher advertise(const char *topic, size_t queue_size, int priority = -1)
 	{
+		(void)queue_size; // unused
 		const struct orb_metadata *meta = NULL;
 
 		if (_node  == NULL) {

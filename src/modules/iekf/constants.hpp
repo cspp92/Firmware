@@ -245,7 +245,7 @@ const float accel_saturation_thresh = 3 * g; // m/s^2
 // guesses
 
 const float wind_correlation_time = 1000; // s
-const float flow_sigma_rw = 1e-2f; // rad/s / sqrt(s)
+const float flow_sigma_rw = 2.5e-2; // rad/s / sqrt(s)
 
 const float process_noise_sigma_xy = 0; // (m) / sqrt(s)
 const float process_noise_sigma_vxy = 1e-1; // (m/s) / sqrt(s)
