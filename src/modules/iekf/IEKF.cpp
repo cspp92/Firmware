@@ -56,7 +56,7 @@ IEKF::IEKF() :
 	_subGps(_nh.subscribe("vehicle_gps_position", 0, &IEKF::correctGps, this, 100)),
 	_subAirspeed(_nh.subscribe("airspeed", 0, &IEKF::correctAirspeed, this, 100)),
 	_subFlow(_nh.subscribe("optical_flow", 0, &IEKF::correctFlow, this, 100)),
-	_subDistance(_nh.subscribe("distance_sensor", 0, &IEKF::callbackDistance, this, 100)),
+	_subDistance(_nh.subscribe("distance_sensor", 0, &IEKF::correctDistance, this, 100)),
 	_subVision(_nh.subscribe("vision_position_estimate", 0, &IEKF::correctVision, this, 100)),
 	_subMocap(_nh.subscribe("att_pos_mocap", 0, &IEKF::correctMocap, this, 100)),
 	_subLand(_nh.subscribe("vehicle_land_detected", 0, &IEKF::callbackLand, this, 100)),
@@ -366,40 +366,6 @@ void IEKF::initializeAttitude(const sensor_combined_s *msg)
 		 double(rad2degf * euler(0)),
 		 double(rad2degf * euler(1)),
 		 double(rad2degf * euler(2)));
-}
-
-void IEKF::callbackDistance(const distance_sensor_s *msg)
-{
-	// require attitude to be initialized
-	if (!_attitudeInitialized) {
-		return;
-	}
-
-	// if not pointing down (roll 180 by convention), do not use
-	if (msg->orientation != 8) {
-		ROS_INFO("distance sensor wrong orientation %d", msg->orientation);
-		return;
-	}
-
-	// if above max distance/ <= 0, out of range
-	if (msg->current_distance > msg->max_distance ||
-	    msg->current_distance < msg->min_distance) {
-		return;
-	}
-
-	// if below 0, don't correct and warn
-	if (msg->current_distance < 0) {
-		ROS_WARN("distance below 0");
-		return;
-	}
-
-	// call correct correction function based on type
-	if (msg->type == distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND) {
-		correctSonar(msg);
-
-	} else if (msg->type == distance_sensor_s::MAV_DISTANCE_SENSOR_LASER) {
-		correctLidar(msg);
-	}
 }
 
 void IEKF::predictState(const sensor_combined_s *msg)

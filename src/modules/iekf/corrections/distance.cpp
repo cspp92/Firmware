@@ -33,16 +33,52 @@
 
 #include "../IEKF.hpp"
 
-void IEKF::correctLidar(const distance_sensor_s *msg)
+void IEKF::correctDistance(const distance_sensor_s *msg)
 {
-	// return if no new data
-	float dt = 0;
-
-	if (!_sensorLidar.ready(msg->timestamp, dt)) {
+	// require attitude to be initialized
+	if (!_attitudeInitialized) {
 		return;
 	}
 
-	//ROS_INFO("correct lidar");
+	// get correct sensor
+	Sensor *sensor = NULL;
+
+	if (msg->type == distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND) {
+		sensor = &_sensorSonar;
+
+	} else if (msg->type == distance_sensor_s::MAV_DISTANCE_SENSOR_LASER) {
+		sensor = &_sensorLidar;
+
+	} else {
+		return;
+	}
+
+	// return if no new data
+	float dt = 0;
+
+	if (!sensor->ready(msg->timestamp, dt)) {
+		return;
+	}
+
+	// if not pointing down (roll 180 by convention), do not use
+	if (msg->orientation != 8) {
+		ROS_INFO("distance sensor wrong orientation %d", msg->orientation);
+		return;
+	}
+
+	// if above max distance/ <= 0, out of range
+	if (msg->current_distance > msg->max_distance ||
+	    msg->current_distance < msg->min_distance) {
+		return;
+	}
+
+	// if below 0, don't correct and warn
+	if (msg->current_distance < 0) {
+		ROS_WARN("distance below 0");
+		return;
+	}
+
+	//ROS_INFO("correct dist bottom");
 
 	// attitude info
 	Dcmf C_nb = Quaternion<float>(
@@ -51,13 +87,13 @@ void IEKF::correctLidar(const distance_sensor_s *msg)
 
 	// abort if too large of an angle
 	if (C_nb(2, 2) < 1e-1f) {
-		ROS_INFO("lidar correction aborted, too large of an angle");
+		ROS_INFO("dist bototm correction aborted, too large of an angle");
 		return;
 	}
 
 	// init origin alt
 	//if (!_origin.altInitialized()) {
-	//ROS_INFO("lidar origin init alt %12.2f m", double(msg->current_distance));
+	//ROS_INFO("dist bottom  origin init alt %12.2f m", double(msg->current_distance));
 	//_origin.altInitialize(msg->current_distance, msg->timestamp);
 	//_x(X::asl) = msg->current_distance;
 	//_x(X::terrain_asl) = 0;
@@ -90,13 +126,13 @@ void IEKF::correctLidar(const distance_sensor_s *msg)
 
 	// kalman correction
 	SquareMatrix<float, Y_distance_down::n> S;
-	_sensorLidar.kalmanCorrectCond(_P, H, R, r, _dxe, _dP, S);
+	sensor->kalmanCorrectCond(_P, H, R, r, _dxe, _dP, S);
 
 	// store innovation
 	_innov.hagl_innov = r(0);
 	_innov.hagl_innov_var = S(0, 0);
 
-	if (_sensorLidar.shouldCorrect()) {
+	if (sensor->shouldCorrect()) {
 		setX(applyErrorCorrection(_dxe));
 		incrementP(_dP);
 	}

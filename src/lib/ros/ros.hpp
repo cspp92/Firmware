@@ -15,6 +15,8 @@
 #define ROS_ERROR PX4_ERR
 #define ROS_DEBUG PX4_DEBUG
 
+typedef const void *const_void_ptr;
+
 namespace ros
 {
 
@@ -126,7 +128,7 @@ public:
 	void publish(const T &msg)
 	{
 		if (_pub != NULL) {
-			_pub->update((void *)(&msg));
+			_pub->update(const_void_ptr(&msg));
 
 		} else {
 			ROS_INFO("publication is NULL");
@@ -231,7 +233,7 @@ public:
 		uint32_t data = 0;
 
 		if (_paramDict.get(key, data)) {
-			val = (T)(data);
+			val = T(data);
 			return true;
 
 		} else {
@@ -242,7 +244,7 @@ public:
 	template<class T>
 	void setParam(const char *key, const T &val)
 	{
-		_paramDict.put(key, (uint32_t)val);
+		_paramDict.put(key, uint32_t(val));
 	}
 
 	void deleteParam(const char *key);

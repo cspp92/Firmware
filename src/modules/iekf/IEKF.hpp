@@ -82,9 +82,7 @@ public:
 	void correctGps(const vehicle_gps_position_s *msg);
 	void correctAirspeed(const airspeed_s *msg);
 	void correctFlow(const optical_flow_s *msg);
-	void callbackDistance(const distance_sensor_s *msg);
-	void correctSonar(const distance_sensor_s *msg);
-	void correctLidar(const distance_sensor_s *msg);
+	void correctDistance(const distance_sensor_s *msg);
 	void correctVision(const vision_position_estimate_s *msg);
 	void correctMocap(const att_pos_mocap_s *msg);
 	void callbackLand(const vehicle_land_detected_s *msg);

@@ -34,7 +34,7 @@ px4_add_module(
 	MODULE modules__iekf
 	MAIN iekf
 	COMPILE_FLAGS
-		-Wall -Wextra -Weffc++
+		-Weffc++
 	STACK_MAIN 1000
 	STACK_MAX 10000
 	SRCS
@@ -43,10 +43,9 @@ px4_add_module(
 		corrections/baro.cpp
 		corrections/flow.cpp
 		corrections/gps.cpp
-		corrections/lidar.cpp
+		corrections/distance.cpp
 		corrections/mag.cpp
 		corrections/mocap.cpp
-		corrections/sonar.cpp
 		corrections/vision.cpp
 		corrections/land.cpp
 		IEKF.cpp

@@ -86,10 +86,10 @@ void IEKF::correctAccel(const sensor_combined_s *msg)
 	Matrix<float, Y_accel::n, Xe::n> H;
 	Matrix3f tmp = a_n_corrected.hat() * 2;
 
-	for (int i = 0; i < 3; i++) {
+	for (size_t i = 0; i < 3; i++) {
 		H(Y_accel::accel_bX + i, Xe::accel_bias_N + i) = 1;
 
-		for (int j = 0; j < 3; j++) {
+		for (size_t j = 0; j < 3; j++) {
 			H(Y_accel::accel_bX + i, Xe::rot_N + j) = tmp(i, j);
 		}
 	}
@@ -102,7 +102,7 @@ void IEKF::correctAccel(const sensor_combined_s *msg)
 	// XXX we store this into mag since EKF2 handles
 	// this differently, we use just heading for mag
 	// and EKF2 doesn't have this correction
-	for (int i = 0; i < 3; i++) {
+	for (size_t i = 0; i < 3; i++) {
 		_innov.mag_innov[i] = r(i);
 		_innov.mag_innov_var[i] = S(i, i);
 	}
