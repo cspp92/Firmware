@@ -89,7 +89,8 @@ public:
 	void correctLand(uint64_t timestamp);
 	void predictState(const sensor_combined_s *msg);
 	void predictCovariance(const sensor_combined_s *msg);
-	Vector<float, X::n> applyErrorCorrection(const Vector<float, Xe::n> &d_xe);
+	Vector<float, X::n> computeErrorCorrection(const Vector<float, Xe::n> &d_xe) const;
+	void correctionLogic(Vector<float, X::n> &dx) const;
 	void boundP();
 	void setP(const SquareMatrix<float, Xe::n> &P)
 	{
@@ -107,13 +108,18 @@ public:
 		_x = x;
 		boundX();
 	}
-	void incrementX(const Vector<float, X::n> &dx)
+	void incrementX(Vector<float, X::n> &dx)
 	{
+		correctionLogic(dx);
 		_x += dx;
 		boundX();
 	}
 	void publish();
-	inline bool getAttitudeValid()
+	inline bool getLanded() const
+	{
+		return _landed;
+	}
+	inline bool getAttitudeValid() const
 	{
 		return _attitudeInitialized &&
 		       ((_P(Xe::rot_N, Xe::rot_N)
@@ -121,75 +127,75 @@ public:
 			 + _P(Xe::rot_D, Xe::rot_D)) < 1.0f);
 
 	};
-	inline bool getVelocityXYValid()
+	inline bool getVelocityXYValid() const
 	{
 		return ((_P(Xe::vel_N, Xe::vel_N)
 			 + _P(Xe::vel_E, Xe::vel_E)) < 2.0f);
 	};
-	inline bool getVelocityZValid()
+	inline bool getVelocityZValid() const
 	{
 		return _P(Xe::vel_D, Xe::vel_D) < 1.0f;
 	};
 
-	inline bool getPositionXYValid()
+	inline bool getPositionXYValid() const
 	{
 		return _origin.xyInitialized()
 		       && ((_P(Xe::pos_N, Xe::pos_N)
 			    + _P(Xe::pos_E, Xe::pos_E)) < 2.0f);
 	};
-	inline bool getAltitudeValid()
+	inline bool getAltitudeValid() const
 	{
 		return _origin.altInitialized()
 		       && (_P(Xe::asl, Xe::asl) < 1.0f);
 	};
-	inline bool getAglValid()
+	inline bool getAglValid() const
 	{
 		return _origin.altInitialized()
 		       && (_P(Xe::asl, Xe::asl) < 1.0f)
 		       && (_P(Xe::terrain_asl, Xe::terrain_asl) < 1.0f);
 	};
-	inline bool getTerrainValid()
+	inline bool getTerrainValid() const
 	{
 		return (_P(Xe::terrain_asl, Xe::terrain_asl) < 1.0f);
 	};
-	inline float getAgl()
+	inline float getAgl() const
 	{
 		return _x(X::asl) - _x(X::terrain_asl);
 	}
-	inline float getAltAboveOrigin()
+	inline float getAltAboveOrigin() const
 	{
 		return _x(X::asl) - _origin.getAlt();
 	};
-	inline bool getGyroSaturated()
+	inline bool getGyroSaturated() const
 	{
 		return _gyroSaturated;
 	}
-	inline bool getAccelSaturated()
+	inline bool getAccelSaturated() const
 	{
 		return _accelSaturated;
 	}
-	inline Quatf getQuaternionNB()
+	inline Quatf getQuaternionNB() const
 	{
 		return Quatf(_x(X::q_nb_0), _x(X::q_nb_1),
 			     _x(X::q_nb_2), _x(X::q_nb_3));
 	}
-	inline Dcmf computeDcmNB()
+	inline Dcmf computeDcmNB() const
 	{
 		return getQuaternionNB();
 	}
-	inline Vector3f getGyroBiasFrameB()
+	inline Vector3f getGyroBiasFrameB() const
 	{
 		return Vector3f(_x(X::gyro_bias_bX), _x(X::gyro_bias_bY), _x(X::gyro_bias_bZ));
 	}
-	inline Vector3f getGyroRawFrameB()
+	inline Vector3f getGyroRawFrameB() const
 	{
 		return Vector3f(_u(U::omega_nb_bX), _u(U::omega_nb_bY), _u(U::omega_nb_bZ));
 	}
-	inline Vector3f getAngularVelocityNBFrameB()
+	inline Vector3f getAngularVelocityNBFrameB() const
 	{
 		return getGyroRawFrameB() - getGyroBiasFrameB();
 	}
-	inline Vector3f getAccelerationFrameB()
+	inline Vector3f getAccelerationFrameB() const
 	{
 		Vector3f a_b(_u(U::accel_bX), _u(U::accel_bY), _u(U::accel_bZ));
 		Vector3f a_bias_b(_x(X::accel_bias_bX), _x(X::accel_bias_bY), _x(X::accel_bias_bZ));

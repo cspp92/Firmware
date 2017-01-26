@@ -1621,6 +1621,7 @@ protected:
 
 	void send(const hrt_abstime t)
 	{
+		PX4_INFO("local position ned send");
 		struct vehicle_local_position_s pos;
 
 		if (_pos_sub->update(&_pos_time, &pos)) {
@@ -1665,6 +1666,7 @@ public:
 
 	static MavlinkStream *new_instance(Mavlink *mavlink)
 	{
+		PX4_INFO("creating local position ned cov");
 		return new MavlinkStreamLocalPositionNEDCOV(mavlink);
 	}
 
@@ -1685,10 +1687,14 @@ protected:
 	explicit MavlinkStreamLocalPositionNEDCOV(Mavlink *mavlink) : MavlinkStream(mavlink),
 		_est_sub(_mavlink->add_orb_subscription(ORB_ID(estimator_status))),
 		_est_time(0)
-	{}
+	{
+
+		PX4_INFO("ctor local position ned cov");
+	}
 
 	void send(const hrt_abstime t)
 	{
+		PX4_INFO("local position ned cov send");
 		struct estimator_status_s est = {};
 
 		if (_est_sub->update(&_est_time, &est)) {

@@ -35,7 +35,7 @@
 #include "constants.hpp"
 
 float condMaxDefault = 1e3;
-float betaMaxDefault = 1e3;
+float betaMaxDefault = 1e21;
 
 IEKF::IEKF() :
 	_nh(), // node handlke
@@ -44,13 +44,13 @@ IEKF::IEKF() :
 	_sensorMag("mag", betaMaxDefault, condMaxDefault, 50),
 	_sensorBaro("baro", betaMaxDefault, condMaxDefault, 50),
 	_sensorGps("gps", betaMaxDefault, condMaxDefault, 10),
-	_sensorAirspeed("airspeed", betaMaxDefault, condMaxDefault, 10),
-	_sensorFlow("flow", betaMaxDefault, condMaxDefault, 20),
-	_sensorSonar("sonar", betaMaxDefault, condMaxDefault, 20),
-	_sensorLidar("lidar", betaMaxDefault, condMaxDefault, 20),
+	_sensorAirspeed("airspeed", betaMaxDefault, condMaxDefault, 0),
+	_sensorFlow("flow", betaMaxDefault, condMaxDefault, 10),
+	_sensorSonar("sonar", betaMaxDefault, condMaxDefault, 10),
+	_sensorLidar("lidar", betaMaxDefault, condMaxDefault, 10),
 	_sensorVision("vision", betaMaxDefault, condMaxDefault, 10),
 	_sensorMocap("mocap", betaMaxDefault, condMaxDefault, 10),
-	_sensorLand("land_detected", betaMaxDefault, condMaxDefault, 10),
+	_sensorLand("land_detected", betaMaxDefault, condMaxDefault, 0),
 	// subscriptions
 	_subImu(_nh.subscribe("sensor_combined", 0, &IEKF::callbackImu, this, 1)),
 	_subGps(_nh.subscribe("vehicle_gps_position", 0, &IEKF::correctGps, this, 100)),
@@ -147,23 +147,23 @@ IEKF::IEKF() :
 	setX(_x0);
 
 	// initialize covariance
-	_P0Diag(Xe::rot_N) = 0;
-	_P0Diag(Xe::rot_E) = 0;
-	_P0Diag(Xe::rot_D) = 0;
-	_P0Diag(Xe::vel_N) = 0;
-	_P0Diag(Xe::vel_E) = 0;
-	_P0Diag(Xe::vel_D) = 0;
+	_P0Diag(Xe::rot_N) = 2;
+	_P0Diag(Xe::rot_E) = 2;
+	_P0Diag(Xe::rot_D) = 2;
+	_P0Diag(Xe::vel_N) = 2;
+	_P0Diag(Xe::vel_E) = 2;
+	_P0Diag(Xe::vel_D) = 2;
 	_P0Diag(Xe::gyro_bias_N) = 0;
 	_P0Diag(Xe::gyro_bias_E) = 0;
 	_P0Diag(Xe::gyro_bias_D) = 0;
 	_P0Diag(Xe::accel_bias_N) = 0;
 	_P0Diag(Xe::accel_bias_E) = 0;
 	_P0Diag(Xe::accel_bias_D) = 0;
-	_P0Diag(Xe::pos_N) = 0;
-	_P0Diag(Xe::pos_E) = 0;
-	_P0Diag(Xe::asl) = 0;
-	_P0Diag(Xe::terrain_asl) = 0;
-	_P0Diag(Xe::baro_bias) = 0;
+	_P0Diag(Xe::pos_N) = 2;
+	_P0Diag(Xe::pos_E) = 2;
+	_P0Diag(Xe::asl) = 2;
+	_P0Diag(Xe::terrain_asl) = 2;
+	_P0Diag(Xe::baro_bias) = 2;
 	//_P0Diag(Xe::wind_N) = 0;
 	//_P0Diag(Xe::wind_E) = 0;
 	//_P0Diag(Xe::wind_D) = 0;
@@ -413,6 +413,7 @@ void IEKF::predictState(const sensor_combined_s *msg)
 
 	//ROS_INFO("dx predict \n");
 	//dx.print();
+
 	incrementX(dx);
 }
 
@@ -588,9 +589,9 @@ void IEKF::predictCovariance(const sensor_combined_s *msg)
 	//ROS_INFO("baro bias stddev (m) %10.4f", double(sqrtf(_P(Xe::baro_bias, Xe::baro_bias))));
 }
 
-Vector<float, X::n> IEKF::applyErrorCorrection(const Vector<float, Xe::n> &d_xe)
+Vector<float, X::n> IEKF::computeErrorCorrection(const Vector<float, Xe::n> &d_xe) const
 {
-	Vector<float, X::n> x = _x;
+	Vector<float, X::n> dx;
 
 	Quatf q_nb = getQuaternionNB();
 	Quatf d_q_nb = Quatf(0.0f,
@@ -608,32 +609,67 @@ Vector<float, X::n> IEKF::applyErrorCorrection(const Vector<float, Xe::n> &d_xe)
 							  d_xe(Xe::accel_bias_E),
 							  d_xe(Xe::accel_bias_D)));
 
+
 	// linear term correction is the same
 	// as the error correction
-	x(X::q_nb_0) += d_q_nb(0);
-	x(X::q_nb_1) += d_q_nb(1);
-	x(X::q_nb_2) += d_q_nb(2);
-	x(X::q_nb_3) += d_q_nb(3);
-	x(X::vel_N) += d_xe(Xe::vel_N);
-	x(X::vel_E) += d_xe(Xe::vel_E);
-	x(X::vel_D) += d_xe(Xe::vel_D);
-	x(X::gyro_bias_bX) += d_gyro_bias_b(0);
-	x(X::gyro_bias_bY) += d_gyro_bias_b(1);
-	x(X::gyro_bias_bZ) +=  d_gyro_bias_b(2);
+	dx(X::q_nb_0) += d_q_nb(0);
+	dx(X::q_nb_1) += d_q_nb(1);
+	dx(X::q_nb_2) += d_q_nb(2);
+	dx(X::q_nb_3) += d_q_nb(3);
+	dx(X::vel_N) += d_xe(Xe::vel_N);
+	dx(X::vel_E) += d_xe(Xe::vel_E);
+	dx(X::vel_D) += d_xe(Xe::vel_D);
+	dx(X::gyro_bias_bX) += d_gyro_bias_b(0);
+	dx(X::gyro_bias_bY) += d_gyro_bias_b(1);
+	dx(X::gyro_bias_bZ) +=  d_gyro_bias_b(2);
 
-	x(X::accel_bias_bX) += d_accel_bias_b(0);
-	x(X::accel_bias_bY) += d_accel_bias_b(1);
-	x(X::accel_bias_bZ) += d_accel_bias_b(2);
+	dx(X::accel_bias_bX) += d_accel_bias_b(0);
+	dx(X::accel_bias_bY) += d_accel_bias_b(1);
+	dx(X::accel_bias_bZ) += d_accel_bias_b(2);
 
-	x(X::pos_N) += d_xe(Xe::pos_N);
-	x(X::pos_E) += d_xe(Xe::pos_E);
-	x(X::asl) += d_xe(Xe::asl);
-	x(X::terrain_asl) += d_xe(Xe::terrain_asl);
-	x(X::baro_bias) += d_xe(Xe::baro_bias);
-	//x(X::wind_N) += d_xe(Xe::wind_N);
-	//x(X::wind_E) += d_xe(Xe::wind_E);
-	//x(X::wind_D) += d_xe(Xe::wind_D);
-	return x;
+	dx(X::pos_N) += d_xe(Xe::pos_N);
+	dx(X::pos_E) += d_xe(Xe::pos_E);
+	dx(X::asl) += d_xe(Xe::asl);
+	dx(X::terrain_asl) += d_xe(Xe::terrain_asl);
+	dx(X::baro_bias) += d_xe(Xe::baro_bias);
+	//dx(X::wind_N) += d_xe(Xe::wind_N);
+	//dx(X::wind_E) += d_xe(Xe::wind_E);
+	//dx(X::wind_D) += d_xe(Xe::wind_D);
+
+	correctionLogic(dx);
+	return dx;
+}
+
+
+void IEKF::correctionLogic(Vector<float, X::n> &dx) const
+{
+
+	//if (!getLanded()) {
+	//dx(X::pos_N) = 0;
+	//dx(X::pos_E) = 0;
+	//}
+
+	//if (!getPositionXYValid()) {
+	//dx(X::pos_N) = 0;
+	//dx(X::pos_E) = 0;
+	//}
+
+	//if (!getAltitudeValid()) {
+	//dx(X::asl) = 0;
+	//}
+
+	//if (!getVelocityXYValid()) {
+	//dx(X::vel_N) = 0;
+	//dx(X::vel_E) = 0;
+	//}
+
+	//if (!getVelocityZValid()) {
+	//dx(X::vel_D) = 0;
+	//}
+
+	//if (!getTerrainValid()) {
+	//dx(X::terrain_asl) = 0;
+	//}
 }
 
 void IEKF::boundP()

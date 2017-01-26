@@ -87,7 +87,8 @@ void IEKF::correctBaro(const sensor_combined_s *msg)
 	_innov.beta_innov_var = S(0, 0);
 
 	if (_sensorBaro.shouldCorrect()) {
-		setX(applyErrorCorrection(_dxe));
+		Vector<float, X::n> dx = computeErrorCorrection(_dxe);
+		incrementX(dx);
 		incrementP(_dP);
 	}
 }

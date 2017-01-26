@@ -111,7 +111,7 @@ void IEKF::correctDistance(const distance_sensor_s *msg)
 
 	// define R
 	SquareMatrix<float, Y_distance_down::n> R;
-	R(Y_distance_down::d, Y_distance_down::d) = 2.5e-4f / dt;
+	R(Y_distance_down::d, Y_distance_down::d) = 1e-4f / dt;
 
 	// define H
 	// Note: this measurement is not invariant due to
@@ -133,7 +133,8 @@ void IEKF::correctDistance(const distance_sensor_s *msg)
 	_innov.hagl_innov_var = S(0, 0);
 
 	if (sensor->shouldCorrect()) {
-		setX(applyErrorCorrection(_dxe));
+		Vector<float, X::n> dx = computeErrorCorrection(_dxe);
+		incrementX(dx);
 		incrementP(_dP);
 	}
 }

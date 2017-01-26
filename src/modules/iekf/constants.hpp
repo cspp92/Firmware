@@ -224,9 +224,9 @@ static const float BETA_TABLE[] = {
 // TODO these should all be rosparams eventually
 
 // artifical landed measurement of velocity and agl
-const float land_sigma_vxy = 1e0f; // m/s
-const float land_sigma_vz = 1e0f; // m/s
-const float land_sigma_agl = 1e0f; // m
+const float land_sigma_vxy = 1e-4f; // m/s
+const float land_sigma_vz = 1e-4f; // m/s
+const float land_sigma_agl = 1e-4f; // m
 
 const float terrain_sigma_asl = 0; // (m/s) / sqrt(s)
 const float g = 9.81f;

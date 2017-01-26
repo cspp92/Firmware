@@ -135,7 +135,8 @@ void IEKF::correctGps(const vehicle_gps_position_s *msg)
 	}
 
 	if (_sensorGps.shouldCorrect()) {
-		setX(applyErrorCorrection(_dxe));
+		Vector<float, X::n> dx = computeErrorCorrection(_dxe);
+		incrementX(dx);
 		incrementP(_dP);
 	}
 }

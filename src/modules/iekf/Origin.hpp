@@ -49,22 +49,22 @@ public:
 		_map_ref.lon_rad = 0;
 		_map_ref.timestamp = 0;
 	}
-	inline bool altInitialized()
+	inline bool altInitialized() const
 	{
 		return _altInitialized;
 	}
 
-	inline bool xyInitialized()
+	inline bool xyInitialized() const
 	{
 		return _map_ref.init_done;
 	}
 
-	inline uint64_t getXYTimestamp()
+	inline uint64_t getXYTimestamp() const
 	{
 		return _map_ref.timestamp;
 	}
 
-	inline bool getAltTimestamp()
+	inline bool getAltTimestamp() const
 	{
 		return _altTimestamp;
 	}
@@ -91,7 +91,7 @@ public:
 		map_projection_init_timestamped(&_map_ref,
 						lat_deg, lon_deg, timestamp);
 	}
-	inline float getAlt()
+	inline float getAlt() const
 	{
 		return _alt;
 	}
@@ -101,19 +101,19 @@ public:
 		_altInitialized = true;
 		_altTimestamp = timestamp;
 	}
-	inline double getLatRad()
+	inline double getLatRad() const
 	{
 		return _map_ref.lat_rad;
 	}
-	inline double getLonRad()
+	inline double getLonRad() const
 	{
 		return _map_ref.lon_rad;
 	}
-	inline double getLatDeg()
+	inline double getLatDeg() const
 	{
 		return rad2deg * getLatRad();
 	}
-	inline double getLonDeg()
+	inline double getLonDeg() const
 	{
 		return rad2deg * getLonRad();
 	}

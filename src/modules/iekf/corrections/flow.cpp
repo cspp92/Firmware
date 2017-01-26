@@ -203,7 +203,8 @@ void IEKF::correctFlow(const optical_flow_s *msg)
 			}
 		}
 
-		setX(applyErrorCorrection(_dxe));
+		Vector<float, X::n> dx = computeErrorCorrection(_dxe);
+		incrementX(dx);
 		incrementP(_dP);
 	}
 }

@@ -98,7 +98,8 @@ void IEKF::correctLand(uint64_t timestamp)
 	// XXX ekf2 doesn't have a place for this innovation
 
 	if (_sensorLand.shouldCorrect()) {
-		setX(applyErrorCorrection(_dxe));
+		Vector<float, X::n> dx = computeErrorCorrection(_dxe);
+		incrementX(dx);
 		incrementP(_dP);
 	}
 }
