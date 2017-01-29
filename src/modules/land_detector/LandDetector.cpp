@@ -52,14 +52,18 @@ namespace land_detector
 LandDetector::LandDetector() :
 	_landDetectedPub(nullptr),
 	_landDetected{0, false, false},
+	_parameterSub(0),
+	_state{},
 	_freefall_hysteresis(false),
 	_landed_hysteresis(true),
+	_ground_contact_hysteresis(true),
 	_taskShouldExit(false),
 	_taskIsRunning(false),
 	_work{}
 {
-	// Use Trigger time when transitioning from in-air (false) to landed (true).
+	// Use Trigger time when transitioning from in-air (false) to landed (true) / ground contact (true).
 	_landed_hysteresis.set_hysteresis_time_from(false, LAND_DETECTOR_TRIGGER_TIME_US);
+	_ground_contact_hysteresis.set_hysteresis_time_from(false, GROUND_CONTACT_TRIGGER_TIME_US);
 }
 
 LandDetector::~LandDetector()
@@ -96,8 +100,9 @@ void LandDetector::_cycle()
 	if (!_taskIsRunning) {
 		// Advertise the first land detected uORB.
 		_landDetected.timestamp = hrt_absolute_time();
-		_landDetected.landed = false;
 		_landDetected.freefall = false;
+		_landDetected.landed = false;
+		_landDetected.ground_contact = false;
 
 		// Initialize uORB topics.
 		_initialize_topics();
@@ -114,17 +119,21 @@ void LandDetector::_cycle()
 
 	_update_state();
 
-	bool landDetected = (_state == LandDetectionState::LANDED);
 	bool freefallDetected = (_state == LandDetectionState::FREEFALL);
+	bool landDetected = (_state == LandDetectionState::LANDED);
+	bool ground_contactDetected = (_state == LandDetectionState::GROUND_CONTACT);
+
 
 	// Only publish very first time or when the result has changed.
 	if ((_landDetectedPub == nullptr) ||
+	    (_landDetected.freefall != freefallDetected) ||
 	    (_landDetected.landed != landDetected) ||
-	    (_landDetected.freefall != freefallDetected)) {
+	    (_landDetected.ground_contact != ground_contactDetected)) {
 
 		_landDetected.timestamp = hrt_absolute_time();
-		_landDetected.landed = (_state == LandDetectionState::LANDED);
 		_landDetected.freefall = (_state == LandDetectionState::FREEFALL);
+		_landDetected.landed = (_state == LandDetectionState::LANDED);
+		_landDetected.ground_contact = (_state == LandDetectionState::GROUND_CONTACT);
 
 		int instance;
 		orb_publish_auto(ORB_ID(vehicle_land_detected), &_landDetectedPub, &_landDetected,
@@ -160,15 +169,24 @@ void LandDetector::_check_params(const bool force)
 
 void LandDetector::_update_state()
 {
+	/* ground contact and landed can be true simultaneously but only one state can be true at a particular time
+	 * with higher priority for landed */
+	bool freefall = _get_freefall_state();
 	bool landed = _get_landed_state();
+	bool groundContact = (landed || _get_ground_contact_state());
+
+	_freefall_hysteresis.set_state_and_update(freefall);
 	_landed_hysteresis.set_state_and_update(landed);
-	_freefall_hysteresis.set_state_and_update(_get_freefall_state());
+	_ground_contact_hysteresis.set_state_and_update(groundContact);
 
 	if (_freefall_hysteresis.get_state()) {
 		_state = LandDetectionState::FREEFALL;
 
 	} else if (_landed_hysteresis.get_state()) {
 		_state = LandDetectionState::LANDED;
+
+	} else if (_ground_contact_hysteresis.get_state()) {
+		_state = LandDetectionState::GROUND_CONTACT;
 
 	} else {
 		_state = LandDetectionState::FLYING;

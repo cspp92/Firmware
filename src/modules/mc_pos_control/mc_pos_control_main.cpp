@@ -805,7 +805,12 @@ MulticopterPositionControl::scale_control(float ctl, float end, float dz, float 
 		return -dy + (ctl + dz) * (1.0f - dy) / (end - dz);
 
 	} else {
-		return ctl * (dy / dz);
+		if (dz < FLT_EPSILON) {
+			return 0;
+
+		} else {
+			return ctl * (dy / dz);
+		}
 	}
 }
 
@@ -1750,6 +1755,29 @@ MulticopterPositionControl::control_position(float dt)
 			thrust_sp(1) = 0.0f;
 		}
 
+		/* if still or already on ground command zero xy velcoity and zero xy thrust_sp in body frame to consider uneven ground */
+		if (_vehicle_land_detected.ground_contact) {
+
+			/* thrust setpoint in body frame*/
+			math::Vector<3> thrust_sp_body = _R.transposed() * thrust_sp;
+
+			/* we dont want to make any correction in body x and y*/
+			thrust_sp_body(0) = 0.0f;
+			thrust_sp_body(1) = 0.0f;
+
+			/* make sure z component of thrust_sp_body is larger than 0 (positive thrust is downward) */
+			thrust_sp_body(2) = thrust_sp(2) > 0.0f ? thrust_sp(2) : 0.0f;
+
+			/* convert back to local frame (NED) */
+			thrust_sp = _R * thrust_sp_body;
+
+			/* set velocity setpoint to zero and reset position */
+			_vel_sp(0) = 0.0f;
+			_vel_sp(1) = 0.0f;
+			_pos_sp(0) = _pos(0);
+			_pos_sp(1) = _pos(1);
+		}
+
 		if (!_control_mode.flag_control_climb_rate_enabled && !_control_mode.flag_control_acceleration_enabled) {
 			thrust_sp(2) = 0.0f;
 		}
@@ -1818,6 +1846,10 @@ MulticopterPositionControl::control_position(float dt)
 				/* not on ground but with ground contact, stop position and velocity control */
 				thrust_sp(0) = 0.0f;
 				thrust_sp(1) = 0.0f;
+				_vel_sp(0) = _vel(0);
+				_vel_sp(1) = _vel(1);
+				_pos_sp(0) = _pos(0);
+				_pos_sp(1) = _pos(1);
 			}
 
 			/* once we assumed to have reached the ground always cut the thrust.
