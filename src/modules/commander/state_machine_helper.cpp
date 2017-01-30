@@ -422,6 +422,7 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 	case commander_state_s::MAIN_STATE_AUTO_RTL:
 	case commander_state_s::MAIN_STATE_AUTO_TAKEOFF:
 	case commander_state_s::MAIN_STATE_AUTO_LAND:
+    case commander_state_s::MAIN_STATE_AUTO_FOLLOW_SWARM:
 
 		/* need global position and home position */
 		if (status_flags->condition_global_position_valid && status_flags->condition_home_position_valid) {
@@ -688,6 +689,7 @@ bool set_nav_state(struct vehicle_status_s *status,
 	case commander_state_s::MAIN_STATE_RATTITUDE:
 	case commander_state_s::MAIN_STATE_STAB:
 	case commander_state_s::MAIN_STATE_ALTCTL:
+//    case commander_state_s::MAIN_STATE_SWARM_FOLLOW:
 
 		/* require RC for all manual modes */
 		if (rc_lost && is_armed) {
@@ -716,6 +718,10 @@ bool set_nav_state(struct vehicle_status_s *status,
 			case commander_state_s::MAIN_STATE_ALTCTL:
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_ALTCTL;
 				break;
+
+//            case commander_state_s::MAIN_STATE_SWARM_FOLLOW:
+//                status->nav_state = vehicle_status_s::NAVIGATION_STATE_SWARM_FOLLOW;
+//                break;
 
 			default:
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_MANUAL;
@@ -914,6 +920,32 @@ bool set_nav_state(struct vehicle_status_s *status,
 		}
 
 		break;
+
+    case commander_state_s::MAIN_STATE_AUTO_FOLLOW_SWARM:
+
+        /* require global position and home */
+
+        if (status->engine_failure) {
+            status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL;
+
+        } else if (!status_flags->condition_global_position_valid) {
+            enable_failsafe(status, old_failsafe, mavlink_log_pub, reason_no_gps);
+
+            if (status_flags->condition_local_position_valid) {
+                status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LAND;
+
+            } else if (status_flags->condition_local_altitude_valid) {
+                status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+
+            } else {
+                status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+            }
+
+        } else {
+            status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW_SWARM;
+        }
+
+        break;
 
 	case commander_state_s::MAIN_STATE_AUTO_TAKEOFF:
 

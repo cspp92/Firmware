@@ -199,6 +199,11 @@ void get_mavlink_mode_state(struct vehicle_status_s *status, uint8_t *mavlink_st
 		custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET;
 		break;
 
+    case vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW_SWARM:
+        *mavlink_base_mode |= auto_mode_flags;
+        custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
+        custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_SWARM;
+
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_RTL:
 
 	/* fallthrough */

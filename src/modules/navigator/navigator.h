@@ -71,11 +71,12 @@
 #include "gpsfailure.h"
 #include "rcloss.h"
 #include "geofence.h"
+#include "swarm_follow.h"
 
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 10
+#define NAVIGATOR_MODE_ARRAY_SIZE 11
 
 class Navigator : public control::SuperBlock
 {
@@ -303,6 +304,8 @@ private:
 	GpsFailure	_gpsFailure;			/**< class that handles the OBC gpsfailure loss mode */
 
 	FollowTarget _follow_target;
+
+    SwarmFollow _swarm_follow;
 
 	NavigatorMode *_navigation_mode_array[NAVIGATOR_MODE_ARRAY_SIZE];	/**< array of navigation modes */
 

@@ -51,6 +51,7 @@ px4_add_module(
 		enginefailure.cpp
 		gpsfailure.cpp
 		follow_target.cpp
+		swarm_follow.cpp
 	DEPENDS
 		platforms__common
 	)

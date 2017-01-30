@@ -530,7 +530,9 @@ int commander_main(int argc, char *argv[])
 				new_main_state = commander_state_s::MAIN_STATE_AUTO_TAKEOFF;
 			} else if (!strcmp(argv[2], "auto:land")) {
 				new_main_state = commander_state_s::MAIN_STATE_AUTO_LAND;
-			} else {
+            } else if (!strcmp(argv[2], "swarm_follow")) {
+                new_main_state = commander_state_s::MAIN_STATE_AUTO_FOLLOW_SWARM;
+            } else {
 				warnx("argument %s unsupported.", argv[2]);
 			}
 
@@ -543,6 +545,62 @@ int commander_main(int argc, char *argv[])
 			warnx("missing argument");
 		}
 	}
+
+    //return current flightmode
+    if(!strcmp(argv[1],"currentmode")){
+        //convert integer<->string of flightmode
+        switch (internal_state.main_state){
+        case 0:
+            PX4_INFO("current flight mode is manual");
+            break;
+        case 1:
+            PX4_INFO("current flight mode is altitude control");
+            break;
+        case 2:
+            PX4_INFO("current flight mode is position control");
+            break;
+        case 3:
+            PX4_INFO("current flight mode is mission");
+            break;
+        case 4:
+            PX4_INFO("current flight mode is loiter");
+            break;
+        case 5:
+            PX4_INFO("current flight mode is rtl");
+            break;
+        case 6:
+            PX4_INFO("current flight mode is acro");
+            break;
+        case 7:
+            PX4_INFO("current flight mode is offboard");
+            break;
+        case 8:
+            PX4_INFO("current flight mode stabilized");
+            break;
+        case 9:
+            PX4_INFO("current flight mode is rattitude");
+            break;
+        case 10:
+            PX4_INFO("current flight mode is takeoff");
+            break;
+        case 11:
+            PX4_INFO("current flight mode is land");
+            break;
+        case 12:
+            PX4_INFO("current flight mode is follow me");
+            break;
+        case 13:
+            PX4_INFO("current flight mode is max");
+            break;
+        case 14:
+            PX4_INFO("current flight mode is follow swarm");
+            break;
+        default:
+            PX4_INFO("current flight mode is unknown");
+            break;
+        }
+        return 0;
+    }
 
 	if (!strcmp(argv[1], "lockdown")) {
 
@@ -575,7 +633,7 @@ void usage(const char *reason)
 		PX4_INFO("%s", reason);
 	}
 
-	PX4_INFO("usage: commander {start|stop|status|calibrate|check|arm|disarm|takeoff|land|transition|mode}\n");
+    PX4_INFO("usage: commander {start|stop|status|calibrate|check|arm|disarm|takeoff|land|transition|mode|currentmode}\n");
 }
 
 void print_status()
@@ -772,6 +830,9 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 						case PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET:
 							main_ret = main_state_transition(status_local, commander_state_s::MAIN_STATE_AUTO_FOLLOW_TARGET, main_state_prev, &status_flags, &internal_state);
 							break;
+                        case PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_SWARM:
+                            main_ret = main_state_transition(status_local, commander_state_s::MAIN_STATE_AUTO_FOLLOW_SWARM, main_state_prev, &status_flags, &internal_state);
+                            break;
 
 						default:
 							main_ret = TRANSITION_DENIED;
@@ -3400,6 +3461,18 @@ set_main_state_rc(struct vehicle_status_s *status_local)
 					}
 				}
 
+                if (new_mode == commander_state_s::MAIN_STATE_AUTO_FOLLOW_SWARM) {
+
+                    /* fall back to position control */
+                    new_mode = commander_state_s::MAIN_STATE_AUTO_LOITER;
+                    print_reject_mode(status_local, "AUTO FOLLOW");
+                    res = main_state_transition(status_local, new_mode, main_state_prev, &status_flags, &internal_state);
+
+                    if (res != TRANSITION_DENIED) {
+                        break;
+                    }
+                }
+
 				if (new_mode == commander_state_s::MAIN_STATE_AUTO_LOITER) {
 
 					/* fall back to position control */
@@ -3664,6 +3737,7 @@ set_control_mode()
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF:
+    case vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW_SWARM:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;
