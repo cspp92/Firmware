@@ -35,7 +35,7 @@ px4_add_module(
 	MAIN offsetCalc
 	STACK_MAIN 2000
 	SRCS
-		offsetCalc.cpp
+		offsetCalc.c
 	DEPENDS
 		platforms__common
 	)
