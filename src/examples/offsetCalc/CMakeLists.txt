@@ -32,10 +32,9 @@
 ############################################################################
 px4_add_module(
 	MODULE examples__offsetCalc
-	MAIN offsetCalc
-	STACK_MAIN 2000
+	MAIN offsetCalcStart
 	SRCS
-		offsetCalc.c
+		main.cpp
 	DEPENDS
 		platforms__common
 	)
