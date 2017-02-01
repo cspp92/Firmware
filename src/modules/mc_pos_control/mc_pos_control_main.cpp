@@ -1692,6 +1692,7 @@ MulticopterPositionControl::control_position(float dt)
 
 	_vel_sp_prev = _vel_sp;
 
+	_global_vel_sp.timestamp = hrt_absolute_time();
 	_global_vel_sp.vx = _vel_sp(0);
 	_global_vel_sp.vy = _vel_sp(1);
 	_global_vel_sp.vz = _vel_sp(2);
@@ -2224,7 +2225,7 @@ MulticopterPositionControl::task_main()
 		parameters_update(false);
 
 		hrt_abstime t = hrt_absolute_time();
-		float dt = t_prev != 0 ? (t - t_prev) / 1e6f : 0.0f;
+		float dt = t_prev != 0 ? (t - t_prev) / 1e6f : 0.004f;
 		t_prev = t;
 
 		// set dt for control blocks
