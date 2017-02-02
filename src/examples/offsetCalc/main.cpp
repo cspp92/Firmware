@@ -139,8 +139,13 @@ double offset_angle;
 
 double pnorm[3];
 double psoll[3];
-double rot_matrix_yaw[3][3];
+double rot_matrix_yaw[2][3];
+double rot_matrix_new_z[3][3];
 double magnitude;
+//Radius of earth in meters
+double rad_earth=6371000.785;
+double rot_to_dist;
+double new_z[3];
 //static struct params p;
 //static struct param_handles ph;
 
@@ -149,17 +154,13 @@ double magnitude;
 int offsetCalc(int argc, char *argv[])
 {
     //TESTING
-    p1[0]=1;
-    p1[1]=1;
-    p1[2]=0;
+    p1[0]=47.3977420;
+    p1[1]=8.5455940;
+    p1[2]=25;
 
-    p2[0]=2;
-    p2[1]=2;
-    p2[2]=0;
-
-//    offset_angle=45.0;
-//    offset_height=1.0;
-//    offset_dist=2.0;
+    p2[0]=47.3977443;
+    p2[1]=8.5457241;
+    p2[2]=25;
 
     //Deg to Rad
     offset_angle*= M_PI/180.0;
@@ -174,22 +175,46 @@ int offsetCalc(int argc, char *argv[])
     pnorm[1]= p12[1]/magnitude;
     pnorm[2]= p12[2]/magnitude;
 
+
     rot_matrix_yaw[0][0]=cos(offset_angle);    rot_matrix_yaw[0][1]=-sin(offset_angle);    rot_matrix_yaw[0][2]=0;
     rot_matrix_yaw[1][0]=sin(offset_angle);    rot_matrix_yaw[1][1]=cos(offset_angle);     rot_matrix_yaw[1][2]=0;
-    rot_matrix_yaw[2][0]=0;                    rot_matrix_yaw[2][1]=0;                     rot_matrix_yaw[2][2]=1;
 
 
     psoll[0]=pnorm[0]*rot_matrix_yaw[0][0]    +pnorm[1]*rot_matrix_yaw[0][1]   +pnorm[2]*rot_matrix_yaw[0][2];
     psoll[1]=pnorm[0]*rot_matrix_yaw[1][0]    +pnorm[1]*rot_matrix_yaw[1][1]   +pnorm[2]*rot_matrix_yaw[1][2];
-    psoll[2]=pnorm[0]*rot_matrix_yaw[2][0]    +pnorm[1]*rot_matrix_yaw[2][1]   +pnorm[2]*rot_matrix_yaw[2][2];
 
-    psoll[0]*=offset_dist;
-    psoll[1]*=offset_dist;
-    psoll[2]*=offset_dist;
 
     psoll[0]=p2[0]+psoll[0];
     psoll[1]=p2[1]+psoll[1];
+    psoll[2]=p2[2]+pnorm[2];
+    for(int i=0;i<3;i++)
+    {
+        printf("%f\n", psoll[i]);
+    }
+
+
+    //new z axis
+    new_z[0]=psoll[1]*p2[2]-psoll[2]*p2[1];
+    new_z[1]=psoll[2]*p2[0]-psoll[0]*p2[2];
+    new_z[2]=psoll[0]*p2[1]-psoll[1]*p2[0];
+
+    magnitude= sqrt(pow(new_z[0],2)+pow(new_z[1],2)+pow((new_z[2]),2));
+
+    new_z[0]/=magnitude;
+    new_z[1]/=magnitude;
+    new_z[2]/=magnitude;
+
+    rot_to_dist=2*asin(offset_dist/(2*rad_earth));
+
+    rot_matrix_new_z[0][0]=pow(new_z[0],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);               rot_matrix_new_z[0][1]=new_z[0]*new_z[1]*(1-cos(rot_to_dist))-new_z[2]*sin(rot_to_dist);    rot_matrix_new_z[0][2]=new_z[0]*new_z[2]*(1-cos(rot_to_dist))+new_z[1]*sin(rot_to_dist);
+    rot_matrix_new_z[1][0]=new_z[0]*new_z[1]*(1-cos(rot_to_dist))+new_z[2]*sin(rot_to_dist);    rot_matrix_new_z[1][1]=pow(new_z[1],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);               rot_matrix_new_z[1][2]=new_z[1]*new_z[2]*(1-cos(rot_to_dist))-new_z[0]*sin(rot_to_dist);
+    rot_matrix_new_z[2][0]=new_z[2]*new_z[0]*(1-cos(rot_to_dist))-new_z[1]*sin(rot_to_dist);    rot_matrix_new_z[2][1]=new_z[2]*new_z[1]*(1-cos(rot_to_dist))+new_z[0]*sin(rot_to_dist);    rot_matrix_new_z[2][2]=pow(new_z[2],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);
+
+
+    psoll[0]=p2[0]*rot_matrix_new_z[0][0]    +p2[1]*rot_matrix_new_z[0][1]   +p2[2]*rot_matrix_new_z[0][2];
+    psoll[1]=p2[0]*rot_matrix_new_z[1][0]    +p2[1]*rot_matrix_new_z[1][1]   +p2[2]*rot_matrix_new_z[1][2];
     psoll[2]=p2[2]+offset_height;
+
 
     for(int i=0;i<3;i++)
     {
