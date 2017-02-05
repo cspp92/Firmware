@@ -43,7 +43,7 @@
 
 #include <controllib/blocks.hpp>
 #include <controllib/block/BlockParam.hpp>
-
+#include <vector>
 #include "navigator_mode.h"
 #include "mission_block.h"
 

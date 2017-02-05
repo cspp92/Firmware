@@ -56,7 +56,7 @@ set(config_module_list
 	modules/systemlib/mixer
 	modules/uORB
 	modules/vtol_att_control
-
+	
 	lib/controllib
 	lib/conversion
 	lib/DriverFramework/framework
@@ -79,6 +79,7 @@ set(config_module_list
 	examples/ekf_att_pos_estimator
 	examples/attitude_estimator_ekf
 	examples/fixedwing_control
+        examples/offsetCalc
 
 	#
 	# Testing

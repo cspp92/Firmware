@@ -143,9 +143,14 @@ double rot_matrix_yaw[2][3];
 double rot_matrix_new_z[3][3];
 double magnitude;
 //Radius of earth in meters
-double rad_earth=6371000.785;
+double rad_earth_eq=6378137;
+double rad_earth_pole=6356752.3;
+double rad_earth_p2;
+double rad_earth_p1;
+double rad_earth_soll;
 double rot_to_dist;
 double new_z[3];
+double alt;
 //static struct params p;
 //static struct param_handles ph;
 
@@ -161,14 +166,33 @@ int offsetCalc(int argc, char *argv[])
     p2[0]=47.3977443;
     p2[1]=8.5457241;
     p2[2]=25;
+    alt=p2[2];
 
     //Deg to Rad
     offset_angle*= M_PI/180.0;
 
+    //Transform spherical to cartesian
+    rad_earth_p2=sqrt((pow(pow(rad_earth_eq,2)*cos(p2[0]*M_PI/180.0),2)+pow(pow(rad_earth_pole,2)*sin(p2[0]*M_PI/180.0),2))/(pow(rad_earth_eq*cos(p2[0]*M_PI/180.0),2)+pow(rad_earth_pole*sin(p2[0]*M_PI/180.0),2)));
+    rad_earth_p2+=p2[2];//altitude regarding sea level or actual position
+
+    rad_earth_p1=sqrt((pow(pow(rad_earth_eq,2)*cos(p1[0]*M_PI/180.0),2)+pow(pow(rad_earth_pole,2)*sin(p1[0]*M_PI/180.0),2))/(pow(rad_earth_eq*cos(p1[0]*M_PI/180.0),2)+pow(rad_earth_pole*sin(p1[0]*M_PI/180.0),2)));
+    rad_earth_p1+=p1[2];//altitude regarding sea level or actual position
+    rad_earth_soll=rad_earth_p2+offset_height;
+
+    p1[0]=rad_earth_p2*sin(p1[0]*M_PI/180.0)*cos(p1[1]*M_PI/180.0);
+    p1[1]=rad_earth_p2*sin(p1[0]*M_PI/180.0)*sin(p1[1]*M_PI/180.0);
+    p1[2]=rad_earth_p2*cos(p1[0]*M_PI/180.0);
+
+    p2[0]=rad_earth_p2*sin(p2[0]*M_PI/180.0)*cos(p2[1]*M_PI/180.0);
+    p2[1]=rad_earth_p2*sin(p2[0]*M_PI/180.0)*sin(p2[1]*M_PI/180.0);
+    p2[2]=rad_earth_p2*cos(p2[0]*M_PI/180.0);
+
+    //Calc vector to last point
     p12[0]=p1[0]-p2[0];
     p12[1]=p1[1]-p2[1];
     p12[2]=p1[2]-p2[2];
 
+    //Norm vector pointing to last position -> offset direction
     magnitude= sqrt(pow(p12[0],2)+pow(p12[1],2)+pow((p12[2]),2));
 
     pnorm[0]= p12[0]/magnitude;
@@ -176,50 +200,72 @@ int offsetCalc(int argc, char *argv[])
     pnorm[2]= p12[2]/magnitude;
 
 
+    //Rotate to follow from left or right
     rot_matrix_yaw[0][0]=cos(offset_angle);    rot_matrix_yaw[0][1]=-sin(offset_angle);    rot_matrix_yaw[0][2]=0;
     rot_matrix_yaw[1][0]=sin(offset_angle);    rot_matrix_yaw[1][1]=cos(offset_angle);     rot_matrix_yaw[1][2]=0;
-
 
     psoll[0]=pnorm[0]*rot_matrix_yaw[0][0]    +pnorm[1]*rot_matrix_yaw[0][1]   +pnorm[2]*rot_matrix_yaw[0][2];
     psoll[1]=pnorm[0]*rot_matrix_yaw[1][0]    +pnorm[1]*rot_matrix_yaw[1][1]   +pnorm[2]*rot_matrix_yaw[1][2];
 
+    //Scale vector
+    psoll[0]*=offset_dist;
+    psoll[1]*=offset_dist;
+    psoll[2]*=offset_dist;
 
+    magnitude= sqrt(pow(psoll[0],2)+pow(psoll[1],2)+pow((psoll[2]),2));
+    printf("M: %f\n",magnitude);
+
+
+    //Calc position
     psoll[0]=p2[0]+psoll[0];
     psoll[1]=p2[1]+psoll[1];
-    psoll[2]=p2[2]+pnorm[2];
+    psoll[2]=p2[2]+psoll[2];
+
+
+
+    //Transform back to spherical coordinates
+    psoll[0]= acos(psoll[2]/rad_earth_p2)*180.0/M_PI;
+    psoll[1]=asin(psoll[1]/(sin(psoll[0]*M_PI/180.0)*rad_earth_p2))*180.0/M_PI;
+    psoll[2]=alt+offset_height;
+
     for(int i=0;i<3;i++)
     {
         printf("%f\n", psoll[i]);
     }
+
+//    psoll[1]= atan(psoll[0]/psoll[1]);
+//    psoll[0]= asin(psoll[0]/(rad_earth_soll*cos(psoll[1])));
+//    psoll[2]=psoll[2]/(rad_earth_soll*cos());
+
+//    psoll[0]=psoll[0]*180.0/M_PI;
+//    psoll[1]=psoll[1]*180.0/M_PI;
+
 
 
     //new z axis
-    new_z[0]=psoll[1]*p2[2]-psoll[2]*p2[1];
-    new_z[1]=psoll[2]*p2[0]-psoll[0]*p2[2];
-    new_z[2]=psoll[0]*p2[1]-psoll[1]*p2[0];
+//    new_z[0]=psoll[1]*p2[2]-psoll[2]*p2[1];
+//    new_z[1]=psoll[2]*p2[0]-psoll[0]*p2[2];
+//    new_z[2]=psoll[0]*p2[1]-psoll[1]*p2[0];
 
-    magnitude= sqrt(pow(new_z[0],2)+pow(new_z[1],2)+pow((new_z[2]),2));
+//    magnitude= sqrt(pow(new_z[0],2)+pow(new_z[1],2)+pow((new_z[2]),2));
 
-    new_z[0]/=magnitude;
-    new_z[1]/=magnitude;
-    new_z[2]/=magnitude;
+//    new_z[0]/=magnitude;
+//    new_z[1]/=magnitude;
+//    new_z[2]/=magnitude;
 
-    rot_to_dist=2*asin(offset_dist/(2*rad_earth));
+//    rot_to_dist=2*asin(offset_dist/(2*rad_earth));
 
-    rot_matrix_new_z[0][0]=pow(new_z[0],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);               rot_matrix_new_z[0][1]=new_z[0]*new_z[1]*(1-cos(rot_to_dist))-new_z[2]*sin(rot_to_dist);    rot_matrix_new_z[0][2]=new_z[0]*new_z[2]*(1-cos(rot_to_dist))+new_z[1]*sin(rot_to_dist);
-    rot_matrix_new_z[1][0]=new_z[0]*new_z[1]*(1-cos(rot_to_dist))+new_z[2]*sin(rot_to_dist);    rot_matrix_new_z[1][1]=pow(new_z[1],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);               rot_matrix_new_z[1][2]=new_z[1]*new_z[2]*(1-cos(rot_to_dist))-new_z[0]*sin(rot_to_dist);
-    rot_matrix_new_z[2][0]=new_z[2]*new_z[0]*(1-cos(rot_to_dist))-new_z[1]*sin(rot_to_dist);    rot_matrix_new_z[2][1]=new_z[2]*new_z[1]*(1-cos(rot_to_dist))+new_z[0]*sin(rot_to_dist);    rot_matrix_new_z[2][2]=pow(new_z[2],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);
-
-
-    psoll[0]=p2[0]*rot_matrix_new_z[0][0]    +p2[1]*rot_matrix_new_z[0][1]   +p2[2]*rot_matrix_new_z[0][2];
-    psoll[1]=p2[0]*rot_matrix_new_z[1][0]    +p2[1]*rot_matrix_new_z[1][1]   +p2[2]*rot_matrix_new_z[1][2];
-    psoll[2]=p2[2]+offset_height;
+//    rot_matrix_new_z[0][0]=pow(new_z[0],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);               rot_matrix_new_z[0][1]=new_z[0]*new_z[1]*(1-cos(rot_to_dist))-new_z[2]*sin(rot_to_dist);    rot_matrix_new_z[0][2]=new_z[0]*new_z[2]*(1-cos(rot_to_dist))+new_z[1]*sin(rot_to_dist);
+//    rot_matrix_new_z[1][0]=new_z[0]*new_z[1]*(1-cos(rot_to_dist))+new_z[2]*sin(rot_to_dist);    rot_matrix_new_z[1][1]=pow(new_z[1],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);               rot_matrix_new_z[1][2]=new_z[1]*new_z[2]*(1-cos(rot_to_dist))-new_z[0]*sin(rot_to_dist);
+//    rot_matrix_new_z[2][0]=new_z[2]*new_z[0]*(1-cos(rot_to_dist))-new_z[1]*sin(rot_to_dist);    rot_matrix_new_z[2][1]=new_z[2]*new_z[1]*(1-cos(rot_to_dist))+new_z[0]*sin(rot_to_dist);    rot_matrix_new_z[2][2]=pow(new_z[2],2)*(1-cos(rot_to_dist))+cos(rot_to_dist);
 
 
-    for(int i=0;i<3;i++)
-    {
-        printf("%f\n", psoll[i]);
-    }
+//    psoll[0]=p2[0]*rot_matrix_new_z[0][0]    +p2[1]*rot_matrix_new_z[0][1]   +p2[2]*rot_matrix_new_z[0][2];
+//    psoll[1]=p2[0]*rot_matrix_new_z[1][0]    +p2[1]*rot_matrix_new_z[1][1]   +p2[2]*rot_matrix_new_z[1][2];
+//    psoll[2]=p2[2]+offset_height;
+
+
+
     return 0;
 
 }

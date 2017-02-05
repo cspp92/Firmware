@@ -61,6 +61,8 @@ SwarmFollow::SwarmFollow(Navigator *navigator, const char *name) :
 {
     // load initial params
     updateParams();
+
+
 }
 
 SwarmFollow::~SwarmFollow()
@@ -82,5 +84,6 @@ void
 SwarmFollow::on_active()
 {
    PX4_INFO("SWARM...");
+
 }
 
